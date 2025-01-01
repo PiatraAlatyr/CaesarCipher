@@ -1,61 +1,100 @@
 package cipher;
 
-import static java.lang.Character.*;
+import java.util.Arrays;
+import java.util.List;
+
+import static cipher.Alphabet.*;
 
 public class Cipher {
 
-    private Cipher() {
-        throw new IllegalStateException("Utility class");
-    }
-
-    private static final char[] ALPHABET = {'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й',
-            'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ',
-            'ы', 'ь', 'э', 'я', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-            'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '.', ',', '«', '»',
-            '"', '\'', ':', '!', '?', ' ', '+', '-'};
-
-    private static String cipher(String text, int shift) {
-        StringBuilder encrypted = new StringBuilder();
-        for (char character : text.toCharArray()) {
-            int index = getIndex(toLowerCase(character));
-            if (index == -1) {
-                //Неизвестный символ
-                encrypted.append(character);
-                continue;
-            }
-            index += shift % ALPHABET.length;
-            if (index >= ALPHABET.length) index -= ALPHABET.length;
-            else if (index < 0) index += ALPHABET.length;
-            if (isUpperCase(character)) {
-                encrypted.append(toUpperCase(ALPHABET[index]));
-            } else encrypted.append(ALPHABET[index]);
-        }
-        return encrypted.toString();
-    }
-
-    public static String encrypt(String decryptedText, int key) {
-        return cipher(decryptedText, key);
+    public static String encrypt(String text, int key) {
+        return shiftAllText(text, key);
     }
 
     public static String decrypt(String encryptedText, int key) {
-        return cipher(encryptedText, -key);
+        return shiftAllText(encryptedText, -key);
     }
 
-    public static String brutForce(String encryptedText) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < ALPHABET.length; i++) {
-            String text = cipher(encryptedText, i);
-            builder.append("Key: " + (ALPHABET.length - i) + "\n");
-            builder.append(text);
-            builder.append("\n ====================== \n");
+    public static String brutForce(String encryptedText, String keyText) {
+        StringBuilder result = new StringBuilder();
+
+        if (keyText != null) {
+            cleverBrutForce(encryptedText, keyText, result);
+        } else {
+            bluntBrutForce(encryptedText, result);
         }
-        return builder.toString();
+
+        return result.toString();
     }
 
-    private static int getIndex(char character) {
-        for (int i = 0; i < ALPHABET.length; i++) {
-            if (ALPHABET[i] == character) return i;
+    private static void bluntBrutForce(String encryptedText, StringBuilder result) {
+        for (int i = 0; i < ALPHABET.size(); i++) {
+            String decryptedText = shiftAllText(encryptedText, i);
+
+            if (decryptedText.contains(", ") || decryptedText.endsWith(".") || decryptedText.endsWith("!") || decryptedText.endsWith("?")) {
+                result.append(constructResultDecryptedText(decryptedText, i));
+            }
         }
-        return -1;
+    }
+
+    private static void cleverBrutForce(String encryptedText, String keyText, StringBuilder result) {
+        String[] dictionary = cleanDictionary(keyText);
+
+        for (int i = 0; i < ALPHABET.size(); i++) {
+            String decryptedText = shiftAllText(encryptedText, i);
+            List<String> arrayOfDecryptedText = Arrays.asList(decryptedText.split(" "));
+
+            for (String keyWord : dictionary) {
+                if (arrayOfDecryptedText.contains(keyWord)) {
+                    result.append(constructResultDecryptedText(decryptedText, i));
+                    break;
+                }
+            }
+        }
+    }
+
+    private static String[] cleanDictionary(String keyText) {
+        return keyText.replaceAll("\\d","").replace("\\r\\n", " ").split(" ");
+    }
+
+    private static String constructResultDecryptedText(String text, int key) {
+        return "Key: " + (ALPHABET.size() - key) + "\n" +
+                text +
+                "\n======================\n";
+    }
+
+    private static String shiftAllText(String text, int shift) {
+        StringBuilder result = new StringBuilder();
+        int resolvedShift = resolveShift(shift);
+
+        for (char character : text.toCharArray()) {
+            result.append(shiftChar(character, resolvedShift));
+        }
+
+        return result.toString();
+    }
+
+    private static char shiftChar(char character, int shift) {
+        if (!isCharacterInALPHABET(character)) {
+            return character;
+        }
+
+        return resolveShiftedSymbol(character, shift);
+    }
+
+    private static char resolveShiftedSymbol(char character, int shift) {
+        int shiftedIndex = ALPHABET.indexOf(character) + shift;
+
+        if (shiftedIndex < 0) {
+            return ALPHABET.get(shiftedIndex + ALPHABET.size());
+        } else if (shiftedIndex >= ALPHABET.size()) {
+            return ALPHABET.get(shiftedIndex - ALPHABET.size());
+        } else {
+            return ALPHABET.get(shiftedIndex);
+        }
+    }
+
+    private static int resolveShift(int shift) {
+        return shift % ALPHABET.size();
     }
 }

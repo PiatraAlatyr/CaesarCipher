@@ -7,11 +7,12 @@ import java.nio.file.Path;
 
 public class FileHandler {
 
-    private FileHandler() {
-        throw new IllegalStateException("Utility class");
-    }
-
+    //JFileChooser() который используется для выбора файла на выходе имеет File, поэтому все преобразования и проверки происходят здесь.
     public static String readFile(File file) {
+        if (file == null) {
+            return null;
+        }
+
         try {
             return Files.readString(file.toPath());
         } catch (IOException e) {
